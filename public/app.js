@@ -3,9 +3,13 @@ const PLAY_INTERVAL_MS = 1200;
 const NODE_WIDTH = 132;
 const NODE_HEIGHT = 40;
 const INITIAL_ZOOM = 0.9;
+const INITIAL_PAN = { x: 80, y: 140 };
 
 const state = {
   timeline: [],
+  snapshots: new Map(),
+  visibleNodeIds: new Set(),
+  nodePositions: new Map(),
   currentIndex: 0,
   timer: undefined,
   hasSetInitialViewport: false,
@@ -71,32 +75,68 @@ async function init() {
       throw new Error("Timeline is empty. Run scan with at least one commit.");
     }
 
+    elements.commitMeta.textContent = "Loading graph snapshots...";
+    await loadAllSnapshots();
+    buildStableLayout();
+
     elements.slider.max = String(state.timeline.length - 1);
     elements.slider.value = "0";
-    await loadSnapshot(0);
+    loadSnapshot(0);
   } catch (error) {
     showError(error);
   }
 }
 
-async function loadSnapshot(index) {
-  state.currentIndex = index;
-  const entry = state.timeline[index];
-  const response = await fetch(`/data/snapshots/${entry.commit}.json`);
-  if (!response.ok) {
-    throw new Error(`Snapshot not found for ${entry.commit}`);
+async function loadAllSnapshots() {
+  const snapshots = await Promise.all(
+    state.timeline.map(async (entry) => {
+      const response = await fetch(`/data/snapshots/${entry.commit}.json`);
+      if (!response.ok) {
+        throw new Error(`Snapshot not found for ${entry.commit}`);
+      }
+
+      return response.json();
+    }),
+  );
+
+  for (const snapshot of snapshots) {
+    state.snapshots.set(snapshot.commit, snapshot);
+  }
+}
+
+function buildStableLayout() {
+  const nodesByFirstAppearance = new Map();
+
+  for (const entry of state.timeline) {
+    const snapshot = state.snapshots.get(entry.commit);
+    for (const node of snapshot.nodes) {
+      if (!nodesByFirstAppearance.has(node.id)) {
+        nodesByFirstAppearance.set(node.id, node);
+      }
+    }
   }
 
-  const snapshot = await response.json();
-  const visibleNodeIds = new Set(snapshot.nodes.slice(0, MAX_VISIBLE_NODES).map((node) => node.id));
+  const visibleNodes = [...nodesByFirstAppearance.values()].slice(0, MAX_VISIBLE_NODES);
+  state.visibleNodeIds = new Set(visibleNodes.map((node) => node.id));
+  state.nodePositions = new Map(visibleNodes.map((node, index) => [node.id, getStableNodePosition(index)]));
+}
+
+function loadSnapshot(index) {
+  state.currentIndex = index;
+  const entry = state.timeline[index];
+  const snapshot = state.snapshots.get(entry.commit);
+  if (!snapshot) {
+    throw new Error(`Snapshot not loaded for ${entry.commit}`);
+  }
+
   const visibleNodes = snapshot.nodes
-    .filter((node) => visibleNodeIds.has(node.id))
+    .filter((node) => state.visibleNodeIds.has(node.id))
     .map((node) => ({
       data: node,
-      position: getStableNodePosition(node.id),
+      position: state.nodePositions.get(node.id),
     }));
   const visibleEdges = snapshot.edges
-    .filter((edge) => visibleNodeIds.has(edge.source) && visibleNodeIds.has(edge.target))
+    .filter((edge) => state.visibleNodeIds.has(edge.source) && state.visibleNodeIds.has(edge.target))
     .map((edge, edgeIndex) => ({
       data: {
         id: `${edge.source}->${edge.target}:${edgeIndex}`,
@@ -111,7 +151,7 @@ async function loadSnapshot(index) {
   cy.layout({ name: "preset", animate: false, fit: false }).run();
   if (!state.hasSetInitialViewport) {
     cy.zoom(INITIAL_ZOOM);
-    cy.center();
+    cy.pan(INITIAL_PAN);
     state.hasSetInitialViewport = true;
   }
 
@@ -131,7 +171,11 @@ function startPlayback() {
   elements.playButton.textContent = "Stop";
   state.timer = window.setInterval(() => {
     const nextIndex = (state.currentIndex + 1) % state.timeline.length;
-    loadSnapshot(nextIndex).catch(showError);
+    try {
+      loadSnapshot(nextIndex);
+    } catch (error) {
+      showError(error);
+    }
   }, PLAY_INTERVAL_MS);
 }
 
@@ -155,33 +199,24 @@ function shortCommit(commit) {
   return commit.slice(0, 10);
 }
 
-function getStableNodePosition(id) {
-  const hash = hashString(id);
-  const columns = 12;
-  const rows = 12;
-  const column = hash % columns;
-  const row = Math.floor(hash / columns) % rows;
+function getStableNodePosition(index) {
+  const columns = 5;
+  const column = index % columns;
+  const row = Math.floor(index / columns);
 
   return {
-    x: (column - Math.floor(columns / 2)) * 118,
-    y: (row - Math.floor(rows / 2)) * 72,
+    x: column * 150,
+    y: row * 78,
   };
-}
-
-function hashString(value) {
-  let hash = 2166136261;
-
-  for (let index = 0; index < value.length; index += 1) {
-    hash ^= value.charCodeAt(index);
-    hash = Math.imul(hash, 16777619);
-  }
-
-  return hash >>> 0;
 }
 
 elements.slider.addEventListener("input", () => {
   stopPlayback();
-  loadSnapshot(Number(elements.slider.value)).catch(showError);
+  try {
+    loadSnapshot(Number(elements.slider.value));
+  } catch (error) {
+    showError(error);
+  }
 });
 
 elements.playButton.addEventListener("click", () => {
