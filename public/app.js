@@ -261,11 +261,25 @@ function startPlayback() {
     return;
   }
 
+  if (state.currentIndex >= state.timeline.length - 1) {
+    stopPlayback();
+    return;
+  }
+
   elements.playButton.textContent = "Stop";
   state.timer = window.setInterval(() => {
-    const nextIndex = (state.currentIndex + 1) % state.timeline.length;
+    const nextIndex = state.currentIndex + 1;
+
+    if (nextIndex >= state.timeline.length) {
+      stopPlayback();
+      return;
+    }
+
     try {
       loadSnapshot(nextIndex);
+      if (nextIndex >= state.timeline.length - 1) {
+        stopPlayback();
+      }
     } catch (error) {
       showError(error);
     }
