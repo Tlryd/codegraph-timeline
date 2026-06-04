@@ -1,10 +1,14 @@
 const MAX_VISIBLE_NODES = 100;
 const PLAY_INTERVAL_MS = 1200;
+const NODE_WIDTH = 132;
+const NODE_HEIGHT = 40;
+const INITIAL_ZOOM = 0.9;
 
 const state = {
   timeline: [],
   currentIndex: 0,
   timer: undefined,
+  hasSetInitialViewport: false,
 };
 
 const cy = cytoscape({
@@ -26,11 +30,10 @@ const cy = cytoscape({
         "text-halign": "center",
         "text-valign": "center",
         "text-wrap": "wrap",
-        "text-max-width": 108,
+        "text-max-width": 116,
         "text-overflow-wrap": "anywhere",
-        width: "label",
-        height: 34,
-        padding: 10,
+        width: NODE_WIDTH,
+        height: NODE_HEIGHT,
       },
     },
     {
@@ -44,7 +47,7 @@ const cy = cytoscape({
       },
     },
   ],
-  layout: { name: "grid" },
+  layout: { name: "preset" },
 });
 
 const elements = {
@@ -88,7 +91,10 @@ async function loadSnapshot(index) {
   const visibleNodeIds = new Set(snapshot.nodes.slice(0, MAX_VISIBLE_NODES).map((node) => node.id));
   const visibleNodes = snapshot.nodes
     .filter((node) => visibleNodeIds.has(node.id))
-    .map((node) => ({ data: node }));
+    .map((node) => ({
+      data: node,
+      position: getStableNodePosition(node.id),
+    }));
   const visibleEdges = snapshot.edges
     .filter((edge) => visibleNodeIds.has(edge.source) && visibleNodeIds.has(edge.target))
     .map((edge, edgeIndex) => ({
@@ -102,7 +108,12 @@ async function loadSnapshot(index) {
 
   cy.elements().remove();
   cy.add([...visibleNodes, ...visibleEdges]);
-  cy.layout({ name: "cose", animate: false, fit: true, padding: 28 }).run();
+  cy.layout({ name: "preset", animate: false, fit: false }).run();
+  if (!state.hasSetInitialViewport) {
+    cy.zoom(INITIAL_ZOOM);
+    cy.center();
+    state.hasSetInitialViewport = true;
+  }
 
   elements.nodeCount.textContent = String(visibleNodes.length);
   elements.edgeCount.textContent = String(visibleEdges.length);
@@ -142,6 +153,30 @@ function showError(error) {
 
 function shortCommit(commit) {
   return commit.slice(0, 10);
+}
+
+function getStableNodePosition(id) {
+  const hash = hashString(id);
+  const columns = 12;
+  const rows = 12;
+  const column = hash % columns;
+  const row = Math.floor(hash / columns) % rows;
+
+  return {
+    x: (column - Math.floor(columns / 2)) * 118,
+    y: (row - Math.floor(rows / 2)) * 72,
+  };
+}
+
+function hashString(value) {
+  let hash = 2166136261;
+
+  for (let index = 0; index < value.length; index += 1) {
+    hash ^= value.charCodeAt(index);
+    hash = Math.imul(hash, 16777619);
+  }
+
+  return hash >>> 0;
 }
 
 elements.slider.addEventListener("input", () => {
