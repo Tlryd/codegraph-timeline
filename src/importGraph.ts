@@ -2,9 +2,13 @@ import { promises as fs } from "node:fs";
 import path from "node:path";
 import type { GraphSnapshot } from "./types";
 
-const SOURCE_EXTENSIONS = new Set([".ts", ".tsx", ".js", ".jsx", ".mts", ".cts", ".mjs", ".cjs"]);
-const RESOLVE_EXTENSIONS = [".ts", ".tsx", ".js", ".jsx", ".mts", ".cts", ".mjs", ".cjs"];
+const JS_EXTENSIONS = new Set([".ts", ".tsx", ".js", ".jsx", ".mts", ".cts", ".mjs", ".cjs"]);
+const PYTHON_EXTENSIONS = new Set([".py"]);
+const SOURCE_EXTENSIONS = new Set([...JS_EXTENSIONS, ...PYTHON_EXTENSIONS]);
+const JS_RESOLVE_EXTENSIONS = [".ts", ".tsx", ".js", ".jsx", ".mts", ".cts", ".mjs", ".cjs"];
 const IMPORT_RE = /\bimport\s+(?:type\s+)?(?:[^'"`]*?\s+from\s*)?["']([^"']+)["']/g;
+const PYTHON_IMPORT_RE = /^\s*import\s+(.+?)\s*(?:#.*)?$/gm;
+const PYTHON_FROM_RE = /^\s*from\s+([.\w]+)\s+import\s+(.+?)\s*(?:#.*)?$/gm;
 
 export async function buildImportGraph(rootDir: string): Promise<GraphSnapshot> {
   const files = await listSourceFiles(rootDir);
@@ -15,12 +19,8 @@ export async function buildImportGraph(rootDir: string): Promise<GraphSnapshot> 
     const from = normalizeRelative(rootDir, file);
     const content = await fs.readFile(file, "utf8");
 
-    for (const specifier of parseImportSpecifiers(content)) {
-      if (!specifier.startsWith(".")) {
-        continue;
-      }
-
-      const resolved = await resolveImport(file, specifier);
+    for (const specifier of parseFileImportSpecifiers(file, content)) {
+      const resolved = await resolveImport(rootDir, file, specifier);
       if (!resolved) {
         continue;
       }
@@ -48,6 +48,44 @@ export function parseImportSpecifiers(content: string): string[] {
   }
 
   return specifiers;
+}
+
+export function parsePythonImportSpecifiers(content: string): string[] {
+  const specifiers: string[] = [];
+
+  PYTHON_IMPORT_RE.lastIndex = 0;
+  PYTHON_FROM_RE.lastIndex = 0;
+
+  let importMatch: RegExpExecArray | null;
+  while ((importMatch = PYTHON_IMPORT_RE.exec(content)) !== null) {
+    const modules = importMatch[1]
+      .split(",")
+      .map((moduleName) => moduleName.trim().replace(/\s+as\s+\w+$/u, ""))
+      .filter(Boolean);
+    specifiers.push(...modules);
+  }
+
+  let fromMatch: RegExpExecArray | null;
+  while ((fromMatch = PYTHON_FROM_RE.exec(content)) !== null) {
+    const moduleName = fromMatch[1];
+    const importedNames = fromMatch[2]
+      .split(",")
+      .map((importedName) => importedName.trim().replace(/\s+as\s+\w+$/u, ""))
+      .filter((importedName) => importedName !== "*" && importedName.length > 0);
+
+    if (moduleName.startsWith(".")) {
+      if (moduleName.replace(/\./g, "").length === 0) {
+        specifiers.push(...importedNames.map((importedName) => `${moduleName}${importedName}`));
+      } else {
+        specifiers.push(moduleName, ...importedNames.map((importedName) => `${moduleName}.${importedName}`));
+      }
+      continue;
+    }
+
+    specifiers.push(moduleName, ...importedNames.map((importedName) => `${moduleName}.${importedName}`));
+  }
+
+  return [...new Set(specifiers)];
 }
 
 export function calculateDegreeMetrics(graph: GraphSnapshot): Pick<GraphSnapshotMetrics, "maxInDegree" | "maxOutDegree"> {
@@ -102,14 +140,55 @@ function isSourceFile(filePath: string): boolean {
   return SOURCE_EXTENSIONS.has(path.extname(filePath)) && !filePath.endsWith(".d.ts");
 }
 
-async function resolveImport(fromFile: string, specifier: string): Promise<string | undefined> {
+function parseFileImportSpecifiers(filePath: string, content: string): string[] {
+  return path.extname(filePath) === ".py" ? parsePythonImportSpecifiers(content) : parseImportSpecifiers(content);
+}
+
+async function resolveImport(rootDir: string, fromFile: string, specifier: string): Promise<string | undefined> {
+  if (path.extname(fromFile) === ".py") {
+    return resolvePythonImport(rootDir, fromFile, specifier);
+  }
+
+  if (!specifier.startsWith(".")) {
+    return undefined;
+  }
+
+  return resolveJsImport(fromFile, specifier);
+}
+
+async function resolveJsImport(fromFile: string, specifier: string): Promise<string | undefined> {
   const basePath = path.resolve(path.dirname(fromFile), specifier);
   const candidates = [
     basePath,
-    ...RESOLVE_EXTENSIONS.map((extension) => `${basePath}${extension}`),
-    ...RESOLVE_EXTENSIONS.map((extension) => path.join(basePath, `index${extension}`)),
+    ...JS_RESOLVE_EXTENSIONS.map((extension) => `${basePath}${extension}`),
+    ...JS_RESOLVE_EXTENSIONS.map((extension) => path.join(basePath, `index${extension}`)),
   ];
 
+  return firstExistingSourceFile(candidates);
+}
+
+async function resolvePythonImport(rootDir: string, fromFile: string, specifier: string): Promise<string | undefined> {
+  const basePath = specifier.startsWith(".")
+    ? resolveRelativePythonImport(fromFile, specifier)
+    : path.resolve(rootDir, ...specifier.split("."));
+  const candidates = [`${basePath}.py`, path.join(basePath, "__init__.py")];
+
+  return firstExistingSourceFile(candidates);
+}
+
+function resolveRelativePythonImport(fromFile: string, specifier: string): string {
+  const leadingDots = specifier.match(/^\.+/u)?.[0].length ?? 0;
+  const modulePath = specifier.slice(leadingDots).split(".").filter(Boolean);
+  let baseDir = path.dirname(fromFile);
+
+  for (let index = 1; index < leadingDots; index += 1) {
+    baseDir = path.dirname(baseDir);
+  }
+
+  return path.resolve(baseDir, ...modulePath);
+}
+
+async function firstExistingSourceFile(candidates: string[]): Promise<string | undefined> {
   for (const candidate of candidates) {
     try {
       const stat = await fs.stat(candidate);

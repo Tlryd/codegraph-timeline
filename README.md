@@ -2,7 +2,7 @@
 
 `codegraph-timeline` is an MVP CLI that scans a Git repository across its first-parent commit history and writes simple import-graph metrics to JSON.
 
-It currently uses regular expressions for TypeScript and JavaScript import statements. Tree-sitter, richer code graphs, Web UI, and animation are intentionally out of scope for this first version.
+It currently uses regular expressions for TypeScript, JavaScript, and Python import statements. Tree-sitter, richer code graphs, Web UI, and animation are intentionally out of scope for this first version.
 
 ## Install
 
@@ -41,8 +41,8 @@ During a scan, the CLI:
 
 1. Reads commits with `git rev-list --first-parent --reverse HEAD`.
 2. Adds each selected commit to a temporary Git worktree.
-3. Scans TypeScript and JavaScript files.
-4. Resolves relative `import` statements into `file -> imported file` edges.
+3. Scans TypeScript, JavaScript, and Python files.
+4. Resolves local `import` statements into `file -> imported file` edges.
 5. Writes timeline snapshots to `data/timeline.json`.
 
 Example:
