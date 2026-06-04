@@ -3,7 +3,7 @@ import os from "node:os";
 import path from "node:path";
 import { addWorktree, getChangedFiles, getCommitDate, getCommits, git, removeWorktree } from "./git";
 import { buildImportGraph, calculateDegreeMetrics } from "./importGraph";
-import type { ScanOptions, TimelineEntry } from "./types";
+import type { GraphSnapshot, ModuleGraphSnapshot, ScanOptions, TimelineEntry } from "./types";
 
 export async function scanRepository(repoPath: string, options: ScanOptions = {}): Promise<TimelineEntry[]> {
   const resolvedRepoPath = path.resolve(repoPath);
@@ -24,17 +24,19 @@ export async function scanRepository(repoPath: string, options: ScanOptions = {}
 
         const analysisRoot = path.resolve(worktreePath, options.targetDir ?? ".");
         const graph = await buildImportGraph(analysisRoot);
+        const commitDate = await getCommitDate(resolvedRepoPath, commit);
         const degreeMetrics = calculateDegreeMetrics(graph);
 
         timeline.push({
           commit,
-          commitDate: await getCommitDate(resolvedRepoPath, commit),
+          commitDate,
           nodeCount: graph.nodes.length,
           edgeCount: graph.edges.length,
           maxInDegree: degreeMetrics.maxInDegree,
           maxOutDegree: degreeMetrics.maxOutDegree,
           changedFiles: await getChangedFiles(resolvedRepoPath, commit),
         });
+        await writeModuleSnapshot(getSnapshotPath(options.outputPath, commit), toModuleGraphSnapshot(commit, commitDate, graph));
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error);
         throw new Error(`Failed to scan commit ${commit}: ${message}`);
@@ -72,4 +74,31 @@ async function writeTimeline(outputPath: string, timeline: TimelineEntry[]): Pro
   const resolvedOutputPath = path.resolve(outputPath);
   await fs.mkdir(path.dirname(resolvedOutputPath), { recursive: true });
   await fs.writeFile(resolvedOutputPath, `${JSON.stringify(timeline, null, 2)}\n`, "utf8");
+}
+
+function getSnapshotPath(outputPath: string | undefined, commit: string): string {
+  const timelinePath = path.resolve(outputPath ?? path.join(process.cwd(), "data", "timeline.json"));
+  return path.join(path.dirname(timelinePath), "snapshots", `${commit}.json`);
+}
+
+async function writeModuleSnapshot(snapshotPath: string, snapshot: ModuleGraphSnapshot): Promise<void> {
+  const resolvedSnapshotPath = path.resolve(snapshotPath);
+  await fs.mkdir(path.dirname(resolvedSnapshotPath), { recursive: true });
+  await fs.writeFile(resolvedSnapshotPath, `${JSON.stringify(snapshot, null, 2)}\n`, "utf8");
+}
+
+function toModuleGraphSnapshot(commit: string, date: string, graph: GraphSnapshot): ModuleGraphSnapshot {
+  return {
+    commit,
+    date,
+    nodes: graph.nodes.map((node) => ({
+      id: node,
+      label: path.basename(node),
+    })),
+    edges: graph.edges.map(([source, target]) => ({
+      source,
+      target,
+      type: "import",
+    })),
+  };
 }

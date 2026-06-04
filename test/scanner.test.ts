@@ -32,6 +32,8 @@ test("scanRepository writes timeline snapshots from git worktrees", async () => 
 
     const timeline = await scanRepository(repo, { outputPath, targetDir: "src", limit: 2 });
     const written = JSON.parse(await readFile(outputPath, "utf8"));
+    const firstSnapshot = JSON.parse(await readFile(path.join(root, "snapshots", `${timeline[0].commit}.json`), "utf8"));
+    const secondSnapshot = JSON.parse(await readFile(path.join(root, "snapshots", `${timeline[1].commit}.json`), "utf8"));
 
     assert.equal(timeline.length, 2);
     assert.deepEqual(written, timeline);
@@ -42,6 +44,15 @@ test("scanRepository writes timeline snapshots from git worktrees", async () => 
     assert.equal(timeline[1].maxInDegree, 2);
     assert.match(timeline[0].commitDate, /^\d{4}-\d{2}-\d{2}T/);
     assert.ok(timeline[1].changedFiles.includes("src/b.ts"));
+    assert.deepEqual(firstSnapshot.nodes, [
+      { id: "a.ts", label: "a.ts" },
+      { id: "index.ts", label: "index.ts" },
+    ]);
+    assert.deepEqual(firstSnapshot.edges, [{ source: "index.ts", target: "a.ts", type: "import" }]);
+    assert.equal(secondSnapshot.commit, timeline[1].commit);
+    assert.equal(secondSnapshot.date, timeline[1].commitDate);
+    assert.equal(secondSnapshot.nodes.length, 3);
+    assert.equal(secondSnapshot.edges.length, 3);
   } finally {
     await rm(root, { recursive: true, force: true });
   }

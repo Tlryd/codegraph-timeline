@@ -13,6 +13,16 @@ test("parseArgs parses scan command options", () => {
   });
 });
 
+test("parseArgs parses serve command options", () => {
+  assert.deepEqual(parseArgs(["serve", "--data-dir", "data", "--host", "127.0.0.1", "--port", "5000"]), {
+    command: "serve",
+    dataDir: "data",
+    host: "127.0.0.1",
+    port: 5000,
+    help: false,
+  });
+});
+
 test("parseArgs rejects invalid limits", () => {
   assert.throws(() => parseArgs(["scan", ".", "--limit", "0"]), /positive integer/);
 });

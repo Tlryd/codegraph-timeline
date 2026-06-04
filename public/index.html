@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>codegraph-timeline</title>
+    <link rel="stylesheet" href="/styles.css">
+  </head>
+  <body>
+    <main class="shell">
+      <header class="topbar">
+        <div>
+          <h1>codegraph-timeline</h1>
+          <p id="commitMeta">Loading timeline...</p>
+        </div>
+        <div class="stats" aria-label="Snapshot metrics">
+          <span><strong id="nodeCount">0</strong> nodes</span>
+          <span><strong id="edgeCount">0</strong> edges</span>
+        </div>
+      </header>
+
+      <section class="viewer" aria-label="Module dependency graph">
+        <div id="cy"></div>
+      </section>
+
+      <footer class="controls">
+        <button id="playButton" type="button">Play</button>
+        <input id="commitSlider" type="range" min="0" max="0" value="0" step="1" aria-label="Commit">
+        <output id="sliderOutput">0 / 0</output>
+      </footer>
+    </main>
+
+    <script src="/vendor/cytoscape.min.js"></script>
+    <script src="/app.js"></script>
+  </body>
+</html>

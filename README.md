@@ -44,6 +44,7 @@ During a scan, the CLI:
 3. Scans TypeScript, JavaScript, and Python files.
 4. Resolves local `import` statements into `file -> imported file` edges.
 5. Writes timeline snapshots to `data/timeline.json`.
+6. Writes module graph snapshots to `data/snapshots/<commit>.json`.
 
 Example:
 
@@ -73,6 +74,45 @@ Local execution with options:
 node dist/src/cli.js scan <repoPath> --limit 10
 ```
 
+## Web UI
+
+After scanning a repository, start the local Web UI:
+
+```sh
+node dist/src/cli.js serve
+```
+
+On Windows PowerShell:
+
+```powershell
+node .\dist\src\cli.js serve
+```
+
+Then open the URL printed by the command, usually:
+
+```text
+http://127.0.0.1:4173
+```
+
+The UI reads:
+
+```text
+data/timeline.json
+data/snapshots/*.json
+```
+
+Use the commit slider to switch snapshots. Use the Play/Stop button to step through commits automatically.
+
+Serve options:
+
+```sh
+--data-dir <dir>  Directory containing timeline.json and snapshots/. Defaults to data.
+--host <host>     Host to bind. Defaults to 127.0.0.1.
+--port <port>     Port to bind. Defaults to 4173.
+```
+
+The graph view uses Cytoscape.js. To keep the MVP responsive, it displays at most 100 nodes from the selected snapshot and hides edges connected to omitted nodes.
+
 ## Output
 
 `data/timeline.json` contains an array of snapshots:
@@ -89,6 +129,21 @@ node dist/src/cli.js scan <repoPath> --limit 10
     "changedFiles": ["src/index.ts"]
   }
 ]
+```
+
+Each commit also gets a module graph snapshot in `data/snapshots/<commit>.json`:
+
+```json
+{
+  "commit": "abc123...",
+  "date": "2026-06-04T12:00:00+09:00",
+  "nodes": [
+    { "id": "src/index.ts", "label": "index.ts" }
+  ],
+  "edges": [
+    { "source": "src/index.ts", "target": "src/app.ts", "type": "import" }
+  ]
+}
 ```
 
 ## Development
