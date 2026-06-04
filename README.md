@@ -1,0 +1,72 @@
+# codegraph-timeline
+
+`codegraph-timeline` is an MVP CLI that scans a Git repository across its first-parent commit history and writes simple import-graph metrics to JSON.
+
+It currently uses regular expressions for TypeScript and JavaScript import statements. Tree-sitter, richer code graphs, Web UI, and animation are intentionally out of scope for this first version.
+
+## Install
+
+```sh
+npm install
+npm run build
+```
+
+## Usage
+
+```sh
+codegraph-timeline scan <repoPath>
+```
+
+During a scan, the CLI:
+
+1. Reads commits with `git rev-list --first-parent --reverse HEAD`.
+2. Adds each selected commit to a temporary Git worktree.
+3. Scans TypeScript and JavaScript files.
+4. Resolves relative `import` statements into `file -> imported file` edges.
+5. Writes timeline snapshots to `data/timeline.json`.
+
+Example:
+
+```sh
+codegraph-timeline scan C:\path\to\repo --limit 10
+```
+
+Options:
+
+```sh
+--limit <count>     Limit scanned commits, starting from the oldest first-parent commit.
+--target-dir <dir>  Analyze a directory inside each worktree instead of the repository root.
+--output <path>     Write JSON to a custom path. Defaults to data/timeline.json.
+```
+
+If you run the package locally before linking it, use:
+
+```sh
+node dist/cli.js scan <repoPath> --limit 10
+```
+
+## Output
+
+`data/timeline.json` contains an array of snapshots:
+
+```json
+[
+  {
+    "commit": "abc123...",
+    "commitDate": "2026-06-04T12:00:00+09:00",
+    "nodeCount": 12,
+    "edgeCount": 18,
+    "maxInDegree": 4,
+    "maxOutDegree": 3,
+    "changedFiles": ["src/index.ts"]
+  }
+]
+```
+
+## Development
+
+```sh
+npm test
+```
+
+The test command builds TypeScript and runs Node's built-in test runner.
