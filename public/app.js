@@ -1,9 +1,9 @@
 const MAX_VISIBLE_NODES = 100;
 const PLAY_INTERVAL_MS = 1200;
-const NODE_WIDTH = 132;
-const NODE_HEIGHT = 40;
-const INITIAL_ZOOM = 0.9;
-const INITIAL_PAN = { x: 80, y: 140 };
+const NODE_WIDTH = 264;
+const NODE_HEIGHT = 80;
+const INITIAL_ZOOM = 1;
+const INITIAL_PAN = { x: 72, y: 150 };
 const GRAPH_ANIMATION_MS = 260;
 const SLIDER_ANIMATION_MS = 220;
 
@@ -26,19 +26,24 @@ const cy = cytoscape({
       selector: "node",
       style: {
         shape: "round-rectangle",
-        "background-color": "#ffffff",
+        "background-color": "#2563eb",
         "border-color": "#2563eb",
         "border-width": 1.5,
-        color: "#111827",
+        color: "#ffffff",
         label: "data(label)",
-        "font-size": 11,
+        "font-size": 22,
         "font-weight": 700,
-        "min-zoomed-font-size": 8,
+        "min-zoomed-font-size": 12,
         "text-halign": "center",
         "text-valign": "center",
         "text-wrap": "wrap",
-        "text-max-width": 116,
+        "text-max-width": 232,
         "text-overflow-wrap": "anywhere",
+        "shadow-blur": 22,
+        "shadow-color": "rgba(15, 23, 42, 0.34)",
+        "shadow-offset-x": 0,
+        "shadow-offset-y": 10,
+        "shadow-opacity": 1,
         width: NODE_WIDTH,
         height: NODE_HEIGHT,
       },
@@ -46,11 +51,16 @@ const cy = cytoscape({
     {
       selector: "edge",
       style: {
-        width: 1.5,
+        width: 4,
         "line-color": "#94a3b8",
         "target-arrow-color": "#94a3b8",
         "target-arrow-shape": "triangle",
         "curve-style": "bezier",
+        "shadow-blur": 12,
+        "shadow-color": "rgba(15, 23, 42, 0.26)",
+        "shadow-offset-x": 0,
+        "shadow-offset-y": 5,
+        "shadow-opacity": 1,
       },
     },
   ],
@@ -262,8 +272,7 @@ function startPlayback() {
   }
 
   if (state.currentIndex >= state.timeline.length - 1) {
-    stopPlayback();
-    return;
+    loadSnapshot(0);
   }
 
   elements.playButton.textContent = "Stop";
@@ -337,8 +346,8 @@ function getStableNodePosition(index) {
   const row = Math.floor(index / columns);
 
   return {
-    x: column * 150,
-    y: row * 78,
+    x: column * 300,
+    y: row * 156,
   };
 }
 
