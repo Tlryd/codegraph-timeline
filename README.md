@@ -13,6 +13,26 @@ npm run build
 
 ## Usage
 
+Run the built CLI directly from this repository:
+
+```sh
+node dist/cli.js scan <repoPath>
+```
+
+On Windows PowerShell, for example:
+
+```powershell
+node .\dist\cli.js scan C:\Repos\instruction-file-selector
+```
+
+If you want to use `codegraph-timeline` as a command name, link the package first:
+
+```sh
+npm link
+```
+
+Then run:
+
 ```sh
 codegraph-timeline scan <repoPath>
 ```
@@ -39,7 +59,9 @@ Options:
 --output <path>     Write JSON to a custom path. Defaults to data/timeline.json.
 ```
 
-If you run the package locally before linking it, use:
+If PowerShell says `The term 'codegraph-timeline' is not recognized`, the package has not been linked or installed globally yet. Either use the direct `node dist/cli.js ...` form, or run `npm link` from this repository.
+
+Local execution with options:
 
 ```sh
 node dist/cli.js scan <repoPath> --limit 10
