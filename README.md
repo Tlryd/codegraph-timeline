@@ -4,6 +4,14 @@
 
 It currently uses regular expressions for TypeScript, JavaScript, and Python import statements. Tree-sitter, richer code graphs, Web UI, and animation are intentionally out of scope for this first version.
 
+## Demo
+
+The Web UI lets you scrub through commit snapshots and inspect the dependency graph over time.
+
+![codegraph-timeline demo](docs/demo.gif)
+
+Video: [docs/demo.mp4](docs/demo.mp4)
+
 ## Install
 
 ```sh
