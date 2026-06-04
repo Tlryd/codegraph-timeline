@@ -3,7 +3,11 @@ const PLAY_INTERVAL_MS = 1200;
 const NODE_WIDTH = 264;
 const NODE_HEIGHT = 80;
 const INITIAL_ZOOM = 1;
-const INITIAL_PAN = { x: 72, y: 150 };
+const GRID_SIZE = 28;
+const INITIAL_PAN = {
+  x: GRID_SIZE + NODE_WIDTH / 2,
+  y: GRID_SIZE + NODE_HEIGHT / 2,
+};
 const GRAPH_ANIMATION_MS = 260;
 const SLIDER_ANIMATION_MS = 220;
 
