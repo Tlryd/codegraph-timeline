@@ -17,7 +17,7 @@ const state = {
   visibleNodeIds: new Set(),
   nodePositions: new Map(),
   currentIndex: 0,
-  timer: undefined,
+  playbackFrame: undefined,
   hasSetInitialViewport: false,
   sliderAnimationFrame: undefined,
 };
@@ -30,10 +30,10 @@ const cy = cytoscape({
       selector: "node",
       style: {
         shape: "round-rectangle",
-        "background-color": "#ffffff",
-        "border-color": "#d0d7de",
-        "border-width": 1.25,
-        color: "#24292f",
+        "background-color": "#9bdcca",
+        "border-color": "#9bdcca",
+        "border-width": 1.5,
+        color: "#173d37",
         label: "data(label)",
         "font-size": 15,
         "font-weight": 500,
@@ -43,8 +43,8 @@ const cy = cytoscape({
         "text-wrap": "wrap",
         "text-max-width": 160,
         "text-overflow-wrap": "anywhere",
-        "shadow-blur": 14,
-        "shadow-color": "rgba(31, 35, 40, 0.14)",
+        "shadow-blur": 16,
+        "shadow-color": "rgba(42, 83, 75, 0.14)",
         "shadow-offset-x": 0,
         "shadow-offset-y": 5,
         "shadow-opacity": 1,
@@ -56,26 +56,26 @@ const cy = cytoscape({
     {
       selector: "node.important-node",
       style: {
-        "background-color": "#e7f8f3",
-        "border-color": "#1aa89a",
-        color: "#174d45",
-        "border-width": 1.75,
+        "background-color": "#55c7b3",
+        "border-color": "#55c7b3",
+        color: "#0f332f",
+        "border-width": 2,
       },
     },
     {
       selector: "node.test-node",
       style: {
-        "background-color": "#f6f8fa",
-        "border-color": "#d8dee4",
-        color: "#57606a",
+        "background-color": "#d7e2df",
+        "border-color": "#d7e2df",
+        color: "#40524e",
       },
     },
     {
       selector: "node.hover-node",
       style: {
-        "border-color": "#8c959f",
-        "shadow-blur": 22,
-        "shadow-color": "rgba(31, 35, 40, 0.22)",
+        "border-color": "#9bdcca",
+        "shadow-blur": 24,
+        "shadow-color": "rgba(26, 168, 154, 0.24)",
         "shadow-offset-y": 9,
         width: NODE_WIDTH + 6,
         height: NODE_HEIGHT + 4,
@@ -169,7 +169,7 @@ function buildStableLayout() {
   state.nodePositions = new Map(visibleNodes.map((node, index) => [node.id, getStableNodePosition(index)]));
 }
 
-function loadSnapshot(index) {
+function loadSnapshot(index, options = {}) {
   state.currentIndex = index;
   const entry = state.timeline[index];
   const snapshot = state.snapshots.get(entry.commit);
@@ -207,7 +207,9 @@ function loadSnapshot(index) {
 
   elements.nodeCount.textContent = String(visibleNodes.length);
   elements.edgeCount.textContent = String(visibleEdges.length);
-  animateSliderTo(index);
+  if (options.animateSlider ?? true) {
+    animateSliderTo(index);
+  }
   elements.sliderOutput.textContent = `${index + 1} / ${state.timeline.length}`;
   elements.commitMeta.classList.remove("error");
   elements.commitMeta.textContent = `${shortCommit(snapshot.commit)}  ${snapshot.date}`;
@@ -306,41 +308,58 @@ function updateGraphElements(nextNodes, nextEdges) {
 }
 
 function startPlayback() {
-  if (state.timer) {
+  if (state.playbackFrame) {
     return;
   }
 
   if (state.currentIndex >= state.timeline.length - 1) {
-    loadSnapshot(0);
+    loadSnapshot(0, { animateSlider: false });
+    elements.slider.value = "0";
   }
 
-  elements.playButton.textContent = "Stop";
-  state.timer = window.setInterval(() => {
-    const nextIndex = state.currentIndex + 1;
+  const startedAt = performance.now();
+  const startValue = state.currentIndex;
+  const endValue = state.timeline.length - 1;
+  const duration = Math.max(0, endValue - startValue) * PLAY_INTERVAL_MS;
 
-    if (nextIndex >= state.timeline.length) {
+  elements.playButton.textContent = "Stop";
+
+  function tick(now) {
+    const progress = duration === 0 ? 1 : Math.min(1, (now - startedAt) / duration);
+    const sliderValue = startValue + (endValue - startValue) * progress;
+    const nextIndex = Math.min(endValue, Math.floor(sliderValue));
+
+    elements.slider.value = String(sliderValue);
+
+    if (nextIndex !== state.currentIndex) {
+      try {
+        loadSnapshot(nextIndex, { animateSlider: false });
+      } catch (error) {
+        showError(error);
+        return;
+      }
+    }
+
+    if (progress >= 1) {
+      loadSnapshot(endValue, { animateSlider: false });
+      elements.slider.value = String(endValue);
       stopPlayback();
       return;
     }
 
-    try {
-      loadSnapshot(nextIndex);
-      if (nextIndex >= state.timeline.length - 1) {
-        stopPlayback();
-      }
-    } catch (error) {
-      showError(error);
-    }
-  }, PLAY_INTERVAL_MS);
+    state.playbackFrame = window.requestAnimationFrame(tick);
+  }
+
+  state.playbackFrame = window.requestAnimationFrame(tick);
 }
 
 function stopPlayback() {
-  if (!state.timer) {
+  if (!state.playbackFrame) {
     return;
   }
 
-  window.clearInterval(state.timer);
-  state.timer = undefined;
+  window.cancelAnimationFrame(state.playbackFrame);
+  state.playbackFrame = undefined;
   elements.playButton.textContent = "Play";
 }
 
@@ -427,7 +446,8 @@ function isTestNode(id) {
 elements.slider.addEventListener("input", () => {
   stopPlayback();
   try {
-    loadSnapshot(Number(elements.slider.value));
+    const index = Math.round(Number(elements.slider.value));
+    loadSnapshot(index);
   } catch (error) {
     showError(error);
   }
