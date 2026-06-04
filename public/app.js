@@ -4,6 +4,8 @@ const NODE_WIDTH = 132;
 const NODE_HEIGHT = 40;
 const INITIAL_ZOOM = 0.9;
 const INITIAL_PAN = { x: 80, y: 140 };
+const GRAPH_ANIMATION_MS = 260;
+const SLIDER_ANIMATION_MS = 220;
 
 const state = {
   timeline: [],
@@ -13,6 +15,7 @@ const state = {
   currentIndex: 0,
   timer: undefined,
   hasSetInitialViewport: false,
+  sliderAnimationFrame: undefined,
 };
 
 const cy = cytoscape({
@@ -23,10 +26,10 @@ const cy = cytoscape({
       selector: "node",
       style: {
         shape: "round-rectangle",
-        "background-color": "#fffdf8",
-        "border-color": "#134e4a",
-        "border-width": 2,
-        color: "#1c1a17",
+        "background-color": "#ffffff",
+        "border-color": "#2563eb",
+        "border-width": 1.5,
+        color: "#111827",
         label: "data(label)",
         "font-size": 11,
         "font-weight": 700,
@@ -44,8 +47,8 @@ const cy = cytoscape({
       selector: "edge",
       style: {
         width: 1.5,
-        "line-color": "#9f8f7d",
-        "target-arrow-color": "#9f8f7d",
+        "line-color": "#94a3b8",
+        "target-arrow-color": "#94a3b8",
         "target-arrow-shape": "triangle",
         "curve-style": "bezier",
       },
@@ -146,8 +149,7 @@ function loadSnapshot(index) {
       },
     }));
 
-  cy.elements().remove();
-  cy.add([...visibleNodes, ...visibleEdges]);
+  updateGraphElements(visibleNodes, visibleEdges);
   cy.layout({ name: "preset", animate: false, fit: false }).run();
   if (!state.hasSetInitialViewport) {
     cy.zoom(INITIAL_ZOOM);
@@ -157,10 +159,101 @@ function loadSnapshot(index) {
 
   elements.nodeCount.textContent = String(visibleNodes.length);
   elements.edgeCount.textContent = String(visibleEdges.length);
-  elements.slider.value = String(index);
+  animateSliderTo(index);
   elements.sliderOutput.textContent = `${index + 1} / ${state.timeline.length}`;
   elements.commitMeta.classList.remove("error");
   elements.commitMeta.textContent = `${shortCommit(snapshot.commit)}  ${snapshot.date}`;
+}
+
+function updateGraphElements(nextNodes, nextEdges) {
+  const nextNodeIds = new Set(nextNodes.map((node) => node.data.id));
+  const nextEdgeIds = new Set(nextEdges.map((edge) => edge.data.id));
+
+  cy.nodes().forEach((node) => {
+    if (!nextNodeIds.has(node.id())) {
+      node.data("pendingRemoval", true);
+      node.animate(
+        {
+          style: {
+            opacity: 0,
+            width: NODE_WIDTH * 0.76,
+            height: NODE_HEIGHT * 0.76,
+          },
+        },
+        { duration: GRAPH_ANIMATION_MS },
+      );
+      window.setTimeout(() => {
+        if (node.data("pendingRemoval")) {
+          node.remove();
+        }
+      }, GRAPH_ANIMATION_MS);
+    }
+  });
+
+  cy.edges().forEach((edge) => {
+    if (!nextEdgeIds.has(edge.id())) {
+      edge.data("pendingRemoval", true);
+      edge.animate({ style: { opacity: 0 } }, { duration: GRAPH_ANIMATION_MS });
+      window.setTimeout(() => {
+        if (edge.data("pendingRemoval")) {
+          edge.remove();
+        }
+      }, GRAPH_ANIMATION_MS);
+    }
+  });
+
+  for (const node of nextNodes) {
+    const existing = cy.getElementById(node.data.id);
+    if (existing.length > 0) {
+      existing.removeData("pendingRemoval");
+      existing.data(node.data);
+      existing.position(node.position);
+      existing.animate(
+        {
+          style: {
+            opacity: 1,
+            width: NODE_WIDTH,
+            height: NODE_HEIGHT,
+          },
+        },
+        { duration: GRAPH_ANIMATION_MS },
+      );
+      continue;
+    }
+
+    const added = cy.add(node);
+    added.style({
+      opacity: 0,
+      width: NODE_WIDTH * 0.76,
+      height: NODE_HEIGHT * 0.76,
+    });
+    added.animate(
+      {
+        style: {
+          opacity: 1,
+          width: NODE_WIDTH,
+          height: NODE_HEIGHT,
+        },
+      },
+      { duration: GRAPH_ANIMATION_MS },
+    );
+  }
+
+  for (const edge of nextEdges) {
+    const existing = cy.getElementById(edge.data.id);
+    if (existing.length > 0) {
+      existing.removeData("pendingRemoval");
+      existing.data(edge.data);
+      existing.animate({ style: { opacity: 1 } }, { duration: GRAPH_ANIMATION_MS });
+      continue;
+    }
+
+    const added = cy.add(edge);
+    added.style({
+      opacity: 0,
+    });
+    added.animate({ style: { opacity: 1 } }, { duration: GRAPH_ANIMATION_MS });
+  }
 }
 
 function startPlayback() {
@@ -197,6 +290,31 @@ function showError(error) {
 
 function shortCommit(commit) {
   return commit.slice(0, 10);
+}
+
+function animateSliderTo(index) {
+  if (state.sliderAnimationFrame) {
+    window.cancelAnimationFrame(state.sliderAnimationFrame);
+  }
+
+  const from = Number(elements.slider.value);
+  const startedAt = performance.now();
+
+  function tick(now) {
+    const progress = Math.min(1, (now - startedAt) / SLIDER_ANIMATION_MS);
+    const eased = 1 - Math.pow(1 - progress, 3);
+    elements.slider.value = String(from + (index - from) * eased);
+
+    if (progress < 1) {
+      state.sliderAnimationFrame = window.requestAnimationFrame(tick);
+      return;
+    }
+
+    elements.slider.value = String(index);
+    state.sliderAnimationFrame = undefined;
+  }
+
+  state.sliderAnimationFrame = window.requestAnimationFrame(tick);
 }
 
 function getStableNodePosition(index) {
