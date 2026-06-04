@@ -1,7 +1,7 @@
 const MAX_VISIBLE_NODES = 100;
 const PLAY_INTERVAL_MS = 1200;
-const NODE_WIDTH = 264;
-const NODE_HEIGHT = 80;
+const NODE_WIDTH = 184;
+const NODE_HEIGHT = 56;
 const INITIAL_ZOOM = 1;
 const GRID_SIZE = 28;
 const INITIAL_PAN = {
@@ -30,40 +30,71 @@ const cy = cytoscape({
       selector: "node",
       style: {
         shape: "round-rectangle",
-        "background-color": "#2563eb",
-        "border-color": "#2563eb",
-        "border-width": 1.5,
-        color: "#ffffff",
+        "background-color": "#ffffff",
+        "border-color": "#d0d7de",
+        "border-width": 1.25,
+        color: "#24292f",
         label: "data(label)",
-        "font-size": 22,
-        "font-weight": 700,
-        "min-zoomed-font-size": 12,
+        "font-size": 15,
+        "font-weight": 500,
+        "min-zoomed-font-size": 9,
         "text-halign": "center",
         "text-valign": "center",
         "text-wrap": "wrap",
-        "text-max-width": 232,
+        "text-max-width": 160,
         "text-overflow-wrap": "anywhere",
-        "shadow-blur": 22,
-        "shadow-color": "rgba(15, 23, 42, 0.34)",
+        "shadow-blur": 14,
+        "shadow-color": "rgba(31, 35, 40, 0.14)",
         "shadow-offset-x": 0,
-        "shadow-offset-y": 10,
+        "shadow-offset-y": 5,
         "shadow-opacity": 1,
+        "corner-radius": 14,
         width: NODE_WIDTH,
         height: NODE_HEIGHT,
       },
     },
     {
+      selector: "node.important-node",
+      style: {
+        "background-color": "#e7f8f3",
+        "border-color": "#1aa89a",
+        color: "#174d45",
+        "border-width": 1.75,
+      },
+    },
+    {
+      selector: "node.test-node",
+      style: {
+        "background-color": "#f6f8fa",
+        "border-color": "#d8dee4",
+        color: "#57606a",
+      },
+    },
+    {
+      selector: "node.hover-node",
+      style: {
+        "border-color": "#8c959f",
+        "shadow-blur": 22,
+        "shadow-color": "rgba(31, 35, 40, 0.22)",
+        "shadow-offset-y": 9,
+        width: NODE_WIDTH + 6,
+        height: NODE_HEIGHT + 4,
+      },
+    },
+    {
       selector: "edge",
       style: {
-        width: 4,
-        "line-color": "#94a3b8",
-        "target-arrow-color": "#94a3b8",
+        width: 3,
+        "line-color": "#8c959f",
+        "target-arrow-color": "#6e7781",
         "target-arrow-shape": "triangle",
+        "arrow-scale": 1.15,
         "curve-style": "bezier",
-        "shadow-blur": 12,
-        "shadow-color": "rgba(15, 23, 42, 0.26)",
+        opacity: 0.72,
+        "shadow-blur": 7,
+        "shadow-color": "rgba(31, 35, 40, 0.12)",
         "shadow-offset-x": 0,
-        "shadow-offset-y": 5,
+        "shadow-offset-y": 3,
         "shadow-opacity": 1,
       },
     },
@@ -146,10 +177,13 @@ function loadSnapshot(index) {
     throw new Error(`Snapshot not loaded for ${entry.commit}`);
   }
 
+  const degreeCounts = getDegreeCounts(snapshot.edges);
+  const importantThreshold = getImportantThreshold(degreeCounts);
   const visibleNodes = snapshot.nodes
     .filter((node) => state.visibleNodeIds.has(node.id))
     .map((node) => ({
       data: node,
+      classes: getNodeClasses(node.id, degreeCounts.get(node.id) ?? 0, importantThreshold),
       position: state.nodePositions.get(node.id),
     }));
   const visibleEdges = snapshot.edges
@@ -221,6 +255,7 @@ function updateGraphElements(nextNodes, nextEdges) {
     if (existing.length > 0) {
       existing.removeData("pendingRemoval");
       existing.data(node.data);
+      existing.classes(node.classes);
       existing.position(node.position);
       existing.animate(
         {
@@ -355,6 +390,40 @@ function getStableNodePosition(index) {
   };
 }
 
+function getDegreeCounts(edges) {
+  const degreeCounts = new Map();
+
+  for (const edge of edges) {
+    degreeCounts.set(edge.source, (degreeCounts.get(edge.source) ?? 0) + 1);
+    degreeCounts.set(edge.target, (degreeCounts.get(edge.target) ?? 0) + 1);
+  }
+
+  return degreeCounts;
+}
+
+function getImportantThreshold(degreeCounts) {
+  const degrees = [...degreeCounts.values()].sort((a, b) => b - a);
+  return Math.max(3, degrees[Math.min(4, degrees.length - 1)] ?? 3);
+}
+
+function getNodeClasses(id, degree, importantThreshold) {
+  const classes = [];
+
+  if (degree >= importantThreshold) {
+    classes.push("important-node");
+  }
+
+  if (isTestNode(id)) {
+    classes.push("test-node");
+  }
+
+  return classes.join(" ");
+}
+
+function isTestNode(id) {
+  return /(^|[/\\])(__tests__|tests?|spec)([/\\]|$)|[._-](test|spec)\.[cm]?[jt]sx?$|[._-](test|spec)\.py$/iu.test(id);
+}
+
 elements.slider.addEventListener("input", () => {
   stopPlayback();
   try {
@@ -370,6 +439,14 @@ elements.playButton.addEventListener("click", () => {
   } else {
     startPlayback();
   }
+});
+
+cy.on("mouseover", "node", (event) => {
+  event.target.addClass("hover-node");
+});
+
+cy.on("mouseout", "node", (event) => {
+  event.target.removeClass("hover-node");
 });
 
 init();
