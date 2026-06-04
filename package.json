@@ -2,9 +2,9 @@
   "name": "codegraph-timeline",
   "version": "1.0.0",
   "description": "Build a JSON timeline of simple import graphs across Git history.",
-  "main": "dist/cli.js",
+  "main": "dist/src/cli.js",
   "bin": {
-    "codegraph-timeline": "dist/cli.js"
+    "codegraph-timeline": "dist/src/cli.js"
   },
   "scripts": {
     "build": "tsc -p tsconfig.json",
