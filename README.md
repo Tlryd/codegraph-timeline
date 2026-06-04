@@ -154,6 +154,10 @@ Each commit also gets a module graph snapshot in `data/snapshots/<commit>.json`:
 }
 ```
 
+## License
+
+MIT
+
 ## Development
 
 ```sh
