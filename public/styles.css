@@ -1,19 +1,15 @@
 :root {
-  --canvas: #010102;
-  --surface-1: #0f1011;
-  --surface-2: #141516;
-  --surface-3: #18191a;
-  --hairline: #23252a;
-  --hairline-strong: #34343a;
-  --hairline-tertiary: #3e3e44;
-  --primary: #5e6ad2;
-  --primary-hover: #828fff;
-  --primary-focus: #5e69d1;
-  --ink: #f7f8f8;
-  --ink-muted: #d0d6e0;
-  --ink-subtle: #8a8f98;
-  --ink-tertiary: #62666d;
-  --danger: #cf222e;
+  --primary: #06c755;
+  --primary-dark: #05b34c;
+  --ink: #000000;
+  --ink-secondary: #666666;
+  --ink-disabled: #999999;
+  --border: #e5e5e5;
+  --bg: #ffffff;
+  --surface: #f7f8f9;
+  --danger: #d93025;
+  --shadow-1: 0 2px 8px rgba(0, 0, 0, 0.08);
+  --shadow-2: 0 4px 16px rgba(0, 0, 0, 0.12);
 }
 
 * {
@@ -24,8 +20,9 @@ body {
   margin: 0;
   min-height: 100vh;
   color: var(--ink);
-  font-family: "Inter", "SF Pro Display", -apple-system, system-ui, "Segoe UI", sans-serif;
-  background: var(--canvas);
+  font-family: SFPro, Arial, "Noto Sans JP", "Noto Sans KR", sans-serif;
+  font-size: 20px;
+  background: var(--bg);
 }
 
 .shell {
@@ -38,8 +35,9 @@ body {
 
 .topbar,
 .controls {
-  border: 1px solid var(--hairline);
-  background: var(--surface-1);
+  border: 1px solid var(--border);
+  background: var(--bg);
+  box-shadow: var(--shadow-1);
 }
 
 .topbar {
@@ -48,24 +46,24 @@ body {
   justify-content: space-between;
   gap: 24px;
   min-height: 104px;
-  padding: 18px 22px;
+  padding: 18px 24px;
   border-radius: 12px;
 }
 
 h1 {
   margin: 0 0 8px;
-  font-size: 22px;
-  font-weight: 600;
-  letter-spacing: -0.4px;
+  font-size: 24px;
+  font-weight: 700;
+  letter-spacing: normal;
   color: var(--ink);
 }
 
 p {
   margin: 0;
-  color: var(--ink-muted);
-  font-family: "JetBrains Mono", "SF Mono", ui-monospace, Consolas, monospace;
-  font-size: 13px;
-  line-height: 1.5;
+  color: var(--ink-secondary);
+  font-family: "SF Mono", ui-monospace, Consolas, monospace;
+  font-size: 14px;
+  line-height: normal;
   word-break: break-word;
 }
 
@@ -79,10 +77,10 @@ p {
 .stats span {
   min-width: 96px;
   padding: 6px 10px;
-  border: 1px solid var(--hairline);
+  border: 1px solid var(--border);
   border-radius: 8px;
-  background: var(--surface-2);
-  color: var(--ink-subtle);
+  background: var(--surface);
+  color: var(--ink-secondary);
   font-size: 12px;
   text-align: right;
 }
@@ -96,12 +94,13 @@ p {
 
 .viewer {
   min-height: 620px;
-  border: 1px solid var(--hairline-strong);
+  border: 1px solid var(--border);
   border-radius: 12px;
   background:
-    radial-gradient(circle, rgba(255, 255, 255, 0.035) 1px, transparent 1.4px),
-    var(--surface-1);
+    radial-gradient(circle, rgba(0, 0, 0, 0.06) 1px, transparent 1.4px),
+    var(--surface);
   background-size: 24px 24px;
+  box-shadow: var(--shadow-1);
   overflow: hidden;
 }
 
@@ -123,26 +122,25 @@ p {
 
 button {
   min-width: 88px;
-  height: 34px;
-  border: 1px solid var(--primary-focus);
+  height: 44px;
+  border: none;
   border-radius: 8px;
   color: #ffffff;
   background: var(--primary);
-  font-size: 14px;
-  font-weight: 500;
-  letter-spacing: 0;
-  padding: 0 14px;
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: normal;
+  padding: 0 32px;
   cursor: pointer;
 }
 
 button:hover {
-  background: var(--primary-hover);
-  border-color: var(--primary-hover);
+  background: var(--primary-dark);
 }
 
 button:focus-visible,
 input[type="range"]:focus-visible {
-  outline: 2px solid var(--primary-focus);
+  outline: 2px solid var(--primary);
   outline-offset: 2px;
 }
 
@@ -154,9 +152,9 @@ input[type="range"] {
 
 output {
   min-width: 72px;
-  color: var(--ink-subtle);
-  font-family: "JetBrains Mono", "SF Mono", ui-monospace, Consolas, monospace;
-  font-size: 13px;
+  color: var(--ink-secondary);
+  font-family: "SF Mono", ui-monospace, Consolas, monospace;
+  font-size: 14px;
   text-align: right;
 }
 
@@ -164,7 +162,7 @@ output {
   color: var(--danger);
 }
 
-@media (max-width: 720px) {
+@media (max-width: 767px) {
   .shell {
     padding: 12px;
   }
