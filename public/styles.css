@@ -1,17 +1,19 @@
 :root {
-  --bg: #f6f8fa;
-  --panel: #ffffff;
-  --panel-soft: #f6f8fa;
-  --ink: #24292f;
-  --muted: #57606a;
-  --subtle: #8c959f;
-  --line: #d8dee4;
-  --line-strong: #d0d7de;
-  --accent: #3b82f6;
-  --accent-dark: #2563eb;
-  --accent-soft: #dbeafe;
+  --canvas: #010102;
+  --surface-1: #0f1011;
+  --surface-2: #141516;
+  --surface-3: #18191a;
+  --hairline: #23252a;
+  --hairline-strong: #34343a;
+  --hairline-tertiary: #3e3e44;
+  --primary: #5e6ad2;
+  --primary-hover: #828fff;
+  --primary-focus: #5e69d1;
+  --ink: #f7f8f8;
+  --ink-muted: #d0d6e0;
+  --ink-subtle: #8a8f98;
+  --ink-tertiary: #62666d;
   --danger: #cf222e;
-  --shadow: 0 16px 40px rgba(31, 35, 40, 0.08);
 }
 
 * {
@@ -22,11 +24,8 @@ body {
   margin: 0;
   min-height: 100vh;
   color: var(--ink);
-  font-family: "Aptos", "Yu Gothic UI", "Segoe UI", Tahoma, sans-serif;
-  background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.92), rgba(255, 255, 255, 0) 260px),
-    radial-gradient(circle at top left, rgba(59, 130, 246, 0.08), transparent 360px),
-    var(--bg);
+  font-family: "Inter", "SF Pro Display", -apple-system, system-ui, "Segoe UI", sans-serif;
+  background: var(--canvas);
 }
 
 .shell {
@@ -39,10 +38,8 @@ body {
 
 .topbar,
 .controls {
-  border: 1px solid var(--line);
-  background: rgba(255, 255, 255, 0.96);
-  box-shadow: var(--shadow);
-  backdrop-filter: blur(14px);
+  border: 1px solid var(--hairline);
+  background: var(--surface-1);
 }
 
 .topbar {
@@ -57,35 +54,35 @@ body {
 
 h1 {
   margin: 0 0 8px;
-  font-size: 24px;
+  font-size: 22px;
   font-weight: 600;
-  letter-spacing: 0;
+  letter-spacing: -0.4px;
   color: var(--ink);
 }
 
 p {
   margin: 0;
-  color: var(--muted);
-  font-family: "Cascadia Mono", "SFMono-Regular", Consolas, monospace;
-  font-size: 16px;
-  line-height: 1.45;
+  color: var(--ink-muted);
+  font-family: "JetBrains Mono", "SF Mono", ui-monospace, Consolas, monospace;
+  font-size: 13px;
+  line-height: 1.5;
   word-break: break-word;
 }
 
 .stats {
   display: flex;
-  gap: 12px;
+  gap: 8px;
   flex-wrap: wrap;
   justify-content: flex-end;
 }
 
 .stats span {
-  min-width: 104px;
-  padding: 7px 10px;
-  border: 1px solid var(--line);
-  border-radius: 12px;
-  background: var(--panel-soft);
-  color: var(--muted);
+  min-width: 96px;
+  padding: 6px 10px;
+  border: 1px solid var(--hairline);
+  border-radius: 8px;
+  background: var(--surface-2);
+  color: var(--ink-subtle);
   font-size: 12px;
   text-align: right;
 }
@@ -99,13 +96,12 @@ p {
 
 .viewer {
   min-height: 620px;
-  border: 1px solid var(--line-strong);
-  border-radius: 16px;
+  border: 1px solid var(--hairline-strong);
+  border-radius: 12px;
   background:
-    radial-gradient(circle, rgba(140, 149, 159, 0.18) 1px, transparent 1.4px),
-    var(--panel);
+    radial-gradient(circle, rgba(255, 255, 255, 0.035) 1px, transparent 1.4px),
+    var(--surface-1);
   background-size: 24px 24px;
-  box-shadow: 0 22px 56px rgba(31, 35, 40, 0.10);
   overflow: hidden;
 }
 
@@ -120,50 +116,47 @@ p {
   grid-template-columns: auto minmax(160px, 1fr) auto;
   align-items: center;
   gap: 20px;
-  min-height: 88px;
-  padding: 16px 18px;
-  border-radius: 14px;
+  min-height: 72px;
+  padding: 14px 18px;
+  border-radius: 12px;
 }
 
 button {
-  min-width: 96px;
-  height: 42px;
-  border: 1px solid var(--accent-dark);
-  border-radius: 999px;
-  color: white;
-  background: var(--accent);
-  box-shadow: 0 8px 18px rgba(59, 130, 246, 0.16);
-  font-size: 16px;
-  font-weight: 600;
+  min-width: 88px;
+  height: 34px;
+  border: 1px solid var(--primary-focus);
+  border-radius: 8px;
+  color: #ffffff;
+  background: var(--primary);
+  font-size: 14px;
+  font-weight: 500;
+  letter-spacing: 0;
+  padding: 0 14px;
   cursor: pointer;
 }
 
 button:hover {
-  background: var(--accent-dark);
+  background: var(--primary-hover);
+  border-color: var(--primary-hover);
 }
 
 button:focus-visible,
 input[type="range"]:focus-visible {
-  outline: 3px solid var(--accent-soft);
+  outline: 2px solid var(--primary-focus);
   outline-offset: 2px;
 }
 
 input[type="range"] {
   width: 100%;
-  accent-color: var(--accent);
+  accent-color: var(--primary);
   cursor: pointer;
-  transition: filter 160ms ease;
-}
-
-input[type="range"]:hover {
-  filter: saturate(1.18);
 }
 
 output {
-  min-width: 76px;
-  color: var(--muted);
-  font-family: "Cascadia Mono", "SFMono-Regular", Consolas, monospace;
-  font-size: 14px;
+  min-width: 72px;
+  color: var(--ink-subtle);
+  font-family: "JetBrains Mono", "SF Mono", ui-monospace, Consolas, monospace;
+  font-size: 13px;
   text-align: right;
 }
 
